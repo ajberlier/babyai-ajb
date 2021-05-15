@@ -49,8 +49,6 @@ parser.add_argument("--query_choice", type=int, default=0,
                     help="query choice: 0 for lstm memory, 1 for image embedding, 2 for concatenation of both")
 parser.add_argument("--embed_no", type=int, default=1,
                     help="number of embeddings output by attention")
-parser.add_argument("--save-interval", type=int, default=50,
-                    help="number of updates between two saves (default: 50, 0 means no saving)")
 
 args = parser.parse_args()
 
