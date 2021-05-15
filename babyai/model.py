@@ -136,7 +136,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
             if self.lang_model == 'attgru':
                 self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.embed_no)
-
+            print(self.query_size)
             num_module = 2
             self.controllers = []
             for ni in range(num_module):
