@@ -72,6 +72,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.res = 'res' in arch
 
         # Decide which components are enabled
+
         self.query_choice = query_choice
         self.embed_no = embed_no
         self.use_instr = use_instr
@@ -86,6 +87,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.instr_dim = instr_dim
 
         self.obs_space = obs_space
+
+        self.query_size_dict = {0:self.memory_dim, 1:self.image_dim, 2:self.memory_dim+self.image_dim}
+        self.query_size = self.query_size_dict[query_choice]
 
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
@@ -131,7 +135,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.final_instr_dim = kernel_dim * len(kernel_sizes)
 
             if self.lang_model == 'attgru':
-                self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim*self.embed_no)
+                self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.embed_no)
 
             num_module = 2
             self.controllers = []
@@ -217,21 +221,24 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         return self.memory_dim
 
     def forward(self, obs, memory, instr_embedding=None):
+        x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
+
+        if 'pixel' in self.arch:
+            x /= 256.0
+        x = self.image_conv(x)
+
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(obs.instr)
         if self.use_instr and self.lang_model == "attgru":
-            #TODO: Try only using the observation as attention query
-            #TODO: Try a combination aproach where the LSTM is updated beforehand
-            #TODO: Try an LSTM to remember the past instruction embeddings and combine that with the observation
-            #TODO: Final approach where the observation alone is used to return a sequence of weighted embeddings at once.
             if self.query_choice == 0:
-
+                query = memory
             elif self.query_choice == 1:
-
+                query = x
             elif self.query_choice == 2:
-
+                query = torch.cat([memory, x], dim=1)
             # outputs: B x L x D
             # memory: B x M
+            # x: B x O
             mask = (obs.instr != 0).float()
             # The mask tensor has the same length as obs.instr, and
             # thus can be both shorter and longer than instr_embedding.
@@ -246,16 +253,11 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             mask = mask[:, :instr_embedding.shape[1]]
             instr_embedding = instr_embedding[:, :mask.shape[1]]
 
-            keys = self.memory2key(memory)
+            keys = self.memory2key(query)
             pre_softmax = (keys[:, None, :] * instr_embedding).sum(2) + 1000 * mask
             attention = F.softmax(pre_softmax, dim=1)
             instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
 
-        x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
-
-        if 'pixel' in self.arch:
-            x /= 256.0
-        x = self.image_conv(x)
         if self.use_instr:
             for controller in self.controllers:
                 out = controller(x, instr_embedding)

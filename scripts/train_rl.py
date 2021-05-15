@@ -45,6 +45,13 @@ parser.add_argument("--ppo-epochs", type=int, default=4,
                     help="number of epochs for PPO (default: 4)")
 parser.add_argument("--save-interval", type=int, default=50,
                     help="number of updates between two saves (default: 50, 0 means no saving)")
+parser.add_argument("--query_choice", type=int, default=0,
+                    help="query choice: 0 for lstm memory, 1 for image embedding, 2 for concatenation of both")
+parser.add_argument("--embed_no", type=int, default=1,
+                    help="number of embeddings output by attention")
+parser.add_argument("--save-interval", type=int, default=50,
+                    help="number of updates between two saves (default: 50, 0 means no saving)")
+
 args = parser.parse_args()
 
 utils.seed(args.seed)
@@ -69,11 +76,13 @@ model_name_parts = {
     'arch': args.arch,
     'instr': instr,
     'mem': mem,
+    'query_choice': args.query_choice,
+    'embed_no': args.embed_no,
     'seed': args.seed,
     'info': '',
     'coef': '',
-    'suffix': suffix}
-default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
+    'suffix': suffix,}
+default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_query_{query_choice}_embed_no_{embed_no}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
 if args.pretrained_model:
     default_model_name = args.pretrained_model + '_pretrained_' + default_model_name
 args.model = args.model.format(**model_name_parts) if args.model else default_model_name
@@ -95,7 +104,7 @@ if acmodel is None:
     else:
         acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
                           args.image_dim, args.memory_dim, args.instr_dim,
-                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch)
+                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch, query_choice=int(args.query_choice), embed_no=int(args.embed_no))
 
 obss_preprocessor.vocab.save()
 utils.save_model(acmodel, args.model)
