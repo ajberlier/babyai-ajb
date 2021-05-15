@@ -63,7 +63,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, obs_space, action_space,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None):
+                 arch="bow_endpool_res", aux_info=None, query_choice=0, embed_no=1):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -72,6 +72,8 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.res = 'res' in arch
 
         # Decide which components are enabled
+        self.query_choice = query_choice
+        self.embed_no = embed_no
         self.use_instr = use_instr
         self.use_memory = use_memory
         self.arch = arch
@@ -129,7 +131,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.final_instr_dim = kernel_dim * len(kernel_sizes)
 
             if self.lang_model == 'attgru':
-                self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim)
+                self.memory2key = nn.Linear(self.memory_size, self.final_instr_dim*self.embed_no)
 
             num_module = 2
             self.controllers = []
@@ -218,12 +220,24 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.use_instr and instr_embedding is None:
             instr_embedding = self._get_instr_embedding(obs.instr)
         if self.use_instr and self.lang_model == "attgru":
+            #TODO: Try only using the observation as attention query
+            #TODO: Try a combination aproach where the LSTM is updated beforehand
+            #TODO: Try an LSTM to remember the past instruction embeddings and combine that with the observation
+            #TODO: Final approach where the observation alone is used to return a sequence of weighted embeddings at once.
+            if self.query_choice == 0:
+
+            elif self.query_choice == 1:
+
+            elif self.query_choice == 2:
+
             # outputs: B x L x D
             # memory: B x M
             mask = (obs.instr != 0).float()
             # The mask tensor has the same length as obs.instr, and
             # thus can be both shorter and longer than instr_embedding.
-            # It can be longer if instr_embedding is computed
+            # It can be longer if instr_em
+            #
+            # bedding is computed
             # for a subbatch of obs.instr.
             # It can be shorter if obs.instr is a subbatch of
             # the batch that instr_embeddings was computed for.
