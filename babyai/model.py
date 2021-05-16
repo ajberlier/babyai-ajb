@@ -139,9 +139,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.final_instr_dim = kernel_dim * len(kernel_sizes)
 
             if self.lang_model == 'attgru':
-                self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.num_latents)
+                if self.use_latents:
+                    self.memory2key = nn.Linear(self.image_dim, self.final_instr_dim * self.num_latents)
+                else:
+                    self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.num_latents)
             if self.use_latents:
-                self.memory2latent = nn.Linear(self.memory_dim, self.final_instr_dim)
+                self.memory2latent = nn.Linear(self.query_size, self.final_instr_dim)
             print(self.query_size)
             num_module = 2
             self.controllers = []
