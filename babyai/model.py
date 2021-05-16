@@ -63,7 +63,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def __init__(self, obs_space, action_space,
                  image_dim=128, memory_dim=128, instr_dim=128,
                  use_instr=False, lang_model="gru", use_memory=False,
-                 arch="bow_endpool_res", aux_info=None, query_choice=0, embed_no=1):
+                 arch="bow_endpool_res", aux_info=None, query_choice=0, num_latents=1, use_latents=False):
         super().__init__()
 
         endpool = 'endpool' in arch
@@ -74,7 +74,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         # Decide which components are enabled
 
         self.query_choice = query_choice
-        self.embed_no = embed_no
+        self.num_latents = num_latents
         self.use_instr = use_instr
         self.use_memory = use_memory
         self.arch = arch
@@ -85,6 +85,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.image_dim = image_dim
         self.memory_dim = memory_dim
         self.instr_dim = instr_dim
+        self.use_latents = use_latents
 
         self.obs_space = obs_space
 
@@ -135,7 +136,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.final_instr_dim = kernel_dim * len(kernel_sizes)
 
             if self.lang_model == 'attgru':
-                self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.embed_no)
+                self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.num_latents)
+            if self.use_latents:
+                self.memory2latent = nn.Linear(self.memory_dim, self.final_instr_dim)
             print(self.query_size)
             num_module = 2
             self.controllers = []
@@ -174,6 +177,15 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if self.aux_info:
             self.extra_heads = None
             self.add_heads()
+    def set_init_obs(self, obs):
+        self.init_obs = obs
+        x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
+
+        if 'pixel' in self.arch:
+            x /= 256.0
+        x = self.image_conv(x)
+        instr_embedding = self._get_instr_embedding(obs.instr)
+        self.latents = self.get_att_instr(self.init_obs, None, instr_embedding, x)
 
     def add_heads(self):
         '''
@@ -220,6 +232,65 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
     def semi_memory_size(self):
         return self.memory_dim
 
+    def get_att_instr(self, obs, memory, instr_embedding, x):
+        if self.query_choice == 0:
+            query = memory
+        elif self.query_choice == 1:
+            query = x
+        elif self.query_choice == 2:
+            query = torch.cat([memory, x], dim=1)
+        if self.use_latents:
+            query = x
+        # outputs: B x L x D
+        # memory: B x M
+        # x: B x O
+        mask = (obs.instr != 0).float()
+        # The mask tensor has the same length as obs.instr, and
+        # thus can be both shorter and longer than instr_embedding.
+        # It can be longer if instr_em
+        #
+        # bedding is computed
+        # for a subbatch of obs.instr.
+        # It can be shorter if obs.instr is a subbatch of
+        # the batch that instr_embeddings was computed for.
+        # Here, we make sure that mask and instr_embeddings
+        # have equal length along dimension 1.
+        mask = mask[:, :instr_embedding.shape[1]]
+        instr_embedding = instr_embedding[:, :mask.shape[1]]
+        keys = self.memory2key(query)
+        if self.num_latents == 1:
+            pre_softmax = (keys[:, None, :] * instr_embedding).sum(2) + 1000 * mask
+            attention = F.softmax(pre_softmax, dim=1)
+            return (instr_embedding * attention[:, :, None]).sum(1)
+        else:
+            # keys: B x num_latents x 1 x instr_embed
+            # instr_embedding: B x 1 x H x instr_embedding
+            keys = keys.view(keys.shape[0], self.num_latents, -1)
+            pre_softmax = (keys[:, :, None, :] * instr_embedding[:, None, :, :]).sum(3) + 1000 * mask[:, None, :]
+            attention = F.softmax(pre_softmax, dim=2)
+            # attention: B x num_latents x H x 1
+            # instr_embedding: B x 1 x H x instr_embedding
+            # return: B x num_latents
+            return (instr_embedding[:, None, :, :] * attention[:, :, :, None]).sum(2)
+
+    def _get_instr_embedding_from_latents(self, x, memory):
+        if self.query_choice == 0:
+            query = memory
+        elif self.query_choice == 1:
+            query = x
+        elif self.query_choice == 2:
+            query = torch.cat([memory, x], dim=1)
+
+
+        query = self.memory2latent(query)
+
+        # query = B x 1 x D
+        # self.latents = B x num_latents x D
+
+        pre_softmax = (query[:, None, :] * self.latents).sum(2)
+        attention = F.softmax(pre_softmax, dim=1)
+        return (self.latents * attention[:, :, None]).sum(1)
+
     def forward(self, obs, memory, instr_embedding=None):
         x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
 
@@ -227,37 +298,12 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             x /= 256.0
         x = self.image_conv(x)
 
-        if self.use_instr and instr_embedding is None:
+        if self.use_instr and instr_embedding is None and not self.use_latents:
             instr_embedding = self._get_instr_embedding(obs.instr)
-        if self.use_instr and self.lang_model == "attgru":
-            if self.query_choice == 0:
-                query = memory
-            elif self.query_choice == 1:
-                query = x
-            elif self.query_choice == 2:
-                query = torch.cat([memory, x], dim=1)
-            # outputs: B x L x D
-            # memory: B x M
-            # x: B x O
-            mask = (obs.instr != 0).float()
-            # The mask tensor has the same length as obs.instr, and
-            # thus can be both shorter and longer than instr_embedding.
-            # It can be longer if instr_em
-            #
-            # bedding is computed
-            # for a subbatch of obs.instr.
-            # It can be shorter if obs.instr is a subbatch of
-            # the batch that instr_embeddings was computed for.
-            # Here, we make sure that mask and instr_embeddings
-            # have equal length along dimension 1.
-            mask = mask[:, :instr_embedding.shape[1]]
-            instr_embedding = instr_embedding[:, :mask.shape[1]]
-
-            keys = self.memory2key(query)
-            pre_softmax = (keys[:, None, :] * instr_embedding).sum(2) + 1000 * mask
-            attention = F.softmax(pre_softmax, dim=1)
-            instr_embedding = (instr_embedding * attention[:, :, None]).sum(1)
-
+        if self.use_instr and self.lang_model == "attgru" and not self.use_latents:
+            instr_embedding = self.get_att_instr(obs, memory, instr_embedding, x)
+        if self.use_latents:
+            instr_embedding = self._get_instr_embedding_from_latents(x, memory)
         if self.use_instr:
             for controller in self.controllers:
                 out = controller(x, instr_embedding)

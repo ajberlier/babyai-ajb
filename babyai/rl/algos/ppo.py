@@ -14,7 +14,7 @@ class PPOAlgo(BaseAlgo):
                  gae_lambda=0.95,
                  entropy_coef=0.01, value_loss_coef=0.5, max_grad_norm=0.5, recurrence=4,
                  adam_eps=1e-5, clip_eps=0.2, epochs=4, batch_size=256, preprocess_obss=None,
-                 reshape_reward=None, aux_info=None):
+                 reshape_reward=None, aux_info=None, use_latents=False):
         num_frames_per_proc = num_frames_per_proc or 128
 
         super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
@@ -24,6 +24,7 @@ class PPOAlgo(BaseAlgo):
         self.clip_eps = clip_eps
         self.epochs = epochs
         self.batch_size = batch_size
+        self.use_latents = use_latents
 
         assert self.batch_size % self.recurrence == 0
 
@@ -79,7 +80,8 @@ class PPOAlgo(BaseAlgo):
                 # Initialize memory
 
                 memory = exps.memory[inds]
-
+                if self.use_latents:
+                    self.acmodel.set_init_obs(exps[inds].obs)
                 for i in range(self.recurrence):
                     # Create a sub-batch of experience
                     sb = exps[inds + i]

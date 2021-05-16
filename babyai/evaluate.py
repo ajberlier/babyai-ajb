@@ -4,7 +4,7 @@ from gym_minigrid.wrappers import RGBImgPartialObsWrapper
 
 
 # Returns the performance of the agent on the environment for a particular number of episodes.
-def evaluate(agent, env, episodes, model_agent=True, offsets=None):
+def evaluate(agent, env, episodes, model_agent=True, offsets=None, use_latents=False):
     # Initialize logs
     if model_agent:
         agent.model.eval()
@@ -27,6 +27,8 @@ def evaluate(agent, env, episodes, model_agent=True, offsets=None):
         num_frames = 0
         returnn = 0
         obss = []
+        if use_latents:
+            agent.set_init_obs(obs)
         while not done:
             action = agent.act(obs)['action']
             obss.append(obs)

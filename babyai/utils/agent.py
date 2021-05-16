@@ -47,6 +47,8 @@ class ModelAgent(Agent):
         self.device = next(self.model.parameters()).device
         self.argmax = argmax
         self.memory = None
+    def set_init_obs(self, obs):
+        self.model.set_init_obs(obs)
 
     def act_batch(self, many_obs):
         if self.memory is None:

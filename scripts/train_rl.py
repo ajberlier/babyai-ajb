@@ -47,8 +47,11 @@ parser.add_argument("--save-interval", type=int, default=50,
                     help="number of updates between two saves (default: 50, 0 means no saving)")
 parser.add_argument("--query_choice", type=int, default=0,
                     help="query choice: 0 for lstm memory, 1 for image embedding, 2 for concatenation of both")
-parser.add_argument("--embed_no", type=int, default=1,
+parser.add_argument("--num_latents", type=int, default=1,
                     help="number of embeddings output by attention")
+parser.add_argument("--use_latents",
+                        action='store_true',
+                        help="use hierarchical attention")
 
 args = parser.parse_args()
 
@@ -75,12 +78,12 @@ model_name_parts = {
     'instr': instr,
     'mem': mem,
     'query_choice': args.query_choice,
-    'embed_no': args.embed_no,
+    'num_latents': args.num_latents,
     'seed': args.seed,
     'info': '',
     'coef': '',
     'suffix': suffix,}
-default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_query_{query_choice}_embed_no_{embed_no}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
+default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_query_{query_choice}_num_latents_{num_latents}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
 if args.pretrained_model:
     default_model_name = args.pretrained_model + '_pretrained_' + default_model_name
 args.model = args.model.format(**model_name_parts) if args.model else default_model_name
@@ -102,7 +105,7 @@ if acmodel is None:
     else:
         acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
                           args.image_dim, args.memory_dim, args.instr_dim,
-                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch, query_choice=int(args.query_choice), embed_no=int(args.embed_no))
+                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch, query_choice=int(args.query_choice), num_latents=int(args.num_latents))
 
 obss_preprocessor.vocab.save()
 utils.save_model(acmodel, args.model)
@@ -118,7 +121,7 @@ if args.algo == "ppo":
                              args.gae_lambda,
                              args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                              args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size, obss_preprocessor,
-                             reshape_reward)
+                             reshape_reward, args.use_latents)
 else:
     raise ValueError("Incorrect algorithm name: {}".format(args.algo))
 
