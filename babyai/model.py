@@ -89,7 +89,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
 
         self.obs_space = obs_space
 
-        self.query_size_dict = {0:self.memory_dim, 1:self.image_dim, 2:self.memory_dim+self.image_dim}
+        self.query_size_dict = {0:self.memory_size, 1:self.image_dim, 2:self.memory_dim+self.image_dim}
         self.query_size = self.query_size_dict[query_choice]
 
         if not use_latents:
