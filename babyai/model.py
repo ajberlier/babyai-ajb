@@ -92,6 +92,9 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         self.query_size_dict = {0:self.memory_dim, 1:self.image_dim, 2:self.memory_dim+self.image_dim}
         self.query_size = self.query_size_dict[query_choice]
 
+        if not use_latents:
+            self.num_latents = 1
+
         for part in self.arch.split('_'):
             if part not in ['original', 'bow', 'pixels', 'endpool', 'res']:
                 raise ValueError("Incorrect architecture name: {}".format(self.arch))

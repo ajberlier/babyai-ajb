@@ -79,11 +79,12 @@ model_name_parts = {
     'mem': mem,
     'query_choice': args.query_choice,
     'num_latents': args.num_latents,
+    'use_latents': args.use_latents,
     'seed': args.seed,
     'info': '',
     'coef': '',
     'suffix': suffix,}
-default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_query_{query_choice}_num_latents_{num_latents}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
+default_model_name = "{env}_{algo}_{arch}_{instr}_{mem}_query_{query_choice}_use_latents{use_latents}_num_latents_{num_latents}_seed{seed}{info}{coef}_{suffix}".format(**model_name_parts)
 if args.pretrained_model:
     default_model_name = args.pretrained_model + '_pretrained_' + default_model_name
 args.model = args.model.format(**model_name_parts) if args.model else default_model_name
@@ -121,7 +122,7 @@ if args.algo == "ppo":
                              args.gae_lambda,
                              args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                              args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size, obss_preprocessor,
-                             reshape_reward, args.use_latents)
+                             reshape_reward, None, args.use_latents)
 else:
     raise ValueError("Incorrect algorithm name: {}".format(args.algo))
 
