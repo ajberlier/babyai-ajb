@@ -1,7 +1,7 @@
 import numpy
 import torch
 import torch.nn.functional as F
-import babyai.utils as utils
+from babyai import utils
 
 from babyai.rl.algos.base import BaseAlgo
 
