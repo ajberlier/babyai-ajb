@@ -192,7 +192,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         x = self.image_conv(x)
         x_pool = self.obs_pool(x).view(x.shape[0], -1)
         instr_embedding = self._get_instr_embedding(obs.instr)
-        self.latents = self.get_att_instr(self.init_obs, None, instr_embedding, x_pool)
+        self.latents = self.get_att_instr(obs, None, instr_embedding, x_pool)
 
     def add_heads(self):
         '''
