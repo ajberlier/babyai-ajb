@@ -81,6 +81,7 @@ class PPOAlgo(BaseAlgo):
 
                 memory = exps.memory[inds]
                 if self.use_latents:
+                    print("yay")
                     self.acmodel.set_init_obs(exps[inds].obs)
                 for i in range(self.recurrence):
                     # Create a sub-batch of experience
