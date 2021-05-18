@@ -117,7 +117,7 @@ def batch_evaluate(agent, env_name, seed, episodes, return_obss_actions=False, p
             obss = [[] for _ in range(num_envs)]
             actions = [[] for _ in range(num_envs)]
         if use_latents:
-            agent.set_init_obs(many_obs)
+            agent.set_init_obs(agent.obss_preprocessor(many_obs, device=agent.device))
         while (num_frames == 0).any():
             action = agent.act_batch(many_obs)['action']
             if return_obss_actions:
