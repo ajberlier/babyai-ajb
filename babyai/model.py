@@ -248,6 +248,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             query = torch.cat([memory, x], dim=1)
         if self.use_latents:
             query = x
+            print("yay")
         # outputs: B x L x D
         # memory: B x M
         # x: B x O
