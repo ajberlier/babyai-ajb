@@ -303,13 +303,13 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if 'pixel' in self.arch:
             x /= 256.0
         x = self.image_conv(x)
-        print(self.obs_pool(x).shape)
+        x_pool = self.obs_pool(x).shape
         if self.use_instr and instr_embedding is None and not self.use_latents:
             instr_embedding = self._get_instr_embedding(obs.instr)
         if self.use_instr and self.lang_model == "attgru" and not self.use_latents:
-            instr_embedding = self.get_att_instr(obs, memory, instr_embedding, x)
+            instr_embedding = self.get_att_instr(obs, memory, instr_embedding, x_pool)
         if self.use_latents:
-            instr_embedding = self._get_instr_embedding_from_latents(x, memory)
+            instr_embedding = self._get_instr_embedding_from_latents(x_pool, memory)
         if self.use_instr:
             for controller in self.controllers:
                 out = controller(x, instr_embedding)
