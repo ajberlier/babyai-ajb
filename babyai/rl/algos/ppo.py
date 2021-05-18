@@ -81,6 +81,7 @@ class PPOAlgo(BaseAlgo):
 
                 memory = exps.memory[inds]
                 if self.use_latents:
+                    utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
                     self.acmodel.set_init_obs(exps[inds].obs)
                     utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
                 for i in range(self.recurrence):
