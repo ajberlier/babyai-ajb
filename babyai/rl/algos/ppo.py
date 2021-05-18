@@ -1,7 +1,6 @@
 import numpy
 import torch
 import torch.nn.functional as F
-from babyai import utils
 
 from babyai.rl.algos.base import BaseAlgo
 
@@ -81,9 +80,7 @@ class PPOAlgo(BaseAlgo):
 
                 memory = exps.memory[inds]
                 if self.use_latents:
-                    utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
                     self.acmodel.set_init_obs(exps[inds].obs)
-                    utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
                 for i in range(self.recurrence):
                     # Create a sub-batch of experience
                     sb = exps[inds + i]

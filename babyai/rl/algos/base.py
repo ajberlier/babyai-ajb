@@ -3,6 +3,7 @@ import torch
 import numpy
 
 from babyai.rl.format import default_preprocess_obss
+from babyai import utils
 from babyai.rl.utils import DictList, ParallelEnv
 from babyai.rl.utils.supervised_losses import ExtraInfoCollector
 
@@ -133,7 +134,9 @@ class BaseAlgo(ABC):
 
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
             if i == 0 and self.use_latents:
+                utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
                 self.acmodel.set_init_obs(preprocessed_obs)
+                utils.save_model(self.acmodel, "~/ferraro_user/model.pkl")
             with torch.no_grad():
                 model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
                 dist = model_results['dist']
