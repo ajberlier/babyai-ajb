@@ -37,11 +37,15 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
+        print(x.shape)
         x = F.relu(self.bn1(self.conv1(x)))
+        print(x.shape)
         x = self.conv2(x)
+        print(x.shape)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
+        print(F.relu(self.bn2(out)).shape)
         return F.relu(self.bn2(out))
 
 
