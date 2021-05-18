@@ -19,7 +19,7 @@ class PPOAlgo(BaseAlgo):
 
         super().__init__(envs, acmodel, num_frames_per_proc, discount, lr, gae_lambda, entropy_coef,
                          value_loss_coef, max_grad_norm, recurrence, preprocess_obss, reshape_reward,
-                         aux_info)
+                         aux_info, use_latents)
 
         self.clip_eps = clip_eps
         self.epochs = epochs
@@ -167,11 +167,10 @@ class PPOAlgo(BaseAlgo):
             the indexes of the experiences to be used at first for each batch
 
         """
-
+        # 0, r, 2r, .... frame_per_proc * num_proc
         indexes = numpy.arange(0, self.num_frames, self.recurrence)
         indexes = numpy.random.permutation(indexes)
 
         num_indexes = self.batch_size // self.recurrence
         batches_starting_indexes = [indexes[i:i + num_indexes] for i in range(0, len(indexes), num_indexes)]
-
         return batches_starting_indexes
