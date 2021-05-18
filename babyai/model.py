@@ -37,15 +37,11 @@ class FiLM(nn.Module):
         self.apply(initialize_parameters)
 
     def forward(self, x, y):
-        print(x.shape)
         x = F.relu(self.bn1(self.conv1(x)))
-        print(x.shape)
         x = self.conv2(x)
-        print(x.shape)
         weight = self.weight(y).unsqueeze(2).unsqueeze(3)
         bias = self.bias(y).unsqueeze(2).unsqueeze(3)
         out = x * weight + bias
-        print(F.relu(self.bn2(out)).shape)
         return F.relu(self.bn2(out))
 
 
@@ -122,6 +118,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
         self.film_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
+        self.obs_pool = nn.MaxPool2d(kernel_size=(7, 7) if endpool else (2, 2), stride=2)
 
         # Define instruction embedding
         if self.use_instr:
@@ -149,7 +146,6 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
                     self.memory2key = nn.Linear(self.query_size, self.final_instr_dim*self.num_latents)
             if self.use_latents:
                 self.memory2latent = nn.Linear(self.query_size, self.final_instr_dim)
-            print(self.query_size)
             num_module = 2
             self.controllers = []
             for ni in range(num_module):
@@ -307,7 +303,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if 'pixel' in self.arch:
             x /= 256.0
         x = self.image_conv(x)
-
+        print(self.obs_pool(x).shape)
         if self.use_instr and instr_embedding is None and not self.use_latents:
             instr_embedding = self._get_instr_embedding(obs.instr)
         if self.use_instr and self.lang_model == "attgru" and not self.use_latents:
