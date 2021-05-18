@@ -106,7 +106,7 @@ if acmodel is None:
     else:
         acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
                           args.image_dim, args.memory_dim, args.instr_dim,
-                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch, query_choice=int(args.query_choice), num_latents=int(args.num_latents))
+                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch, query_choice=int(args.query_choice), num_latents=int(args.num_latents), use_latents=args.use_latents)
 
 obss_preprocessor.vocab.save()
 utils.save_model(acmodel, args.model)
