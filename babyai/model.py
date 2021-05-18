@@ -184,7 +184,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
             self.extra_heads = None
             self.add_heads()
     def set_init_obs(self, obs):
-        self.init_obs = obs
+        #self.init_obs = obs
         x = torch.transpose(torch.transpose(obs.image, 1, 3), 2, 3)
 
         if 'pixel' in self.arch:
