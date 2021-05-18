@@ -303,7 +303,7 @@ class ACModel(nn.Module, babyai.rl.RecurrentACModel):
         if 'pixel' in self.arch:
             x /= 256.0
         x = self.image_conv(x)
-        x_pool = self.obs_pool(x).shape
+        x_pool = self.obs_pool(x)
         if self.use_instr and instr_embedding is None and not self.use_latents:
             instr_embedding = self._get_instr_embedding(obs.instr)
         if self.use_instr and self.lang_model == "attgru" and not self.use_latents:
