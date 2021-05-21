@@ -82,6 +82,10 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument("--val-episodes", type=int, default=500,
                             help="number of episodes used to evaluate the agent, and to evaluate validation accuracy")
 
+        # HRL parameters
+        self.add_argument("--hrl", type=bool, default=True,
+                          help=" whether or not to use hrl")
+
     def parse_args(self):
         """
         Parse the arguments and perform some basic validation

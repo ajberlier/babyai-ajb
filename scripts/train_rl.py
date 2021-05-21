@@ -19,7 +19,7 @@ import babyai
 import babyai.utils as utils
 import babyai.rl
 from babyai.arguments import ArgumentParser
-from babyai.model import ACModel
+from babyai.model import ACModel, OCModel
 from babyai.evaluate import batch_evaluate
 from babyai.utils.agent import ModelAgent
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
@@ -89,13 +89,26 @@ else:
 
 # Define actor-critic model
 acmodel = utils.load_model(args.model, raise_not_found=False)
-if acmodel is None:
-    if args.pretrained_model:
-        acmodel = utils.load_model(args.pretrained_model, raise_not_found=True)
-    else:
-        acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
-                          args.image_dim, args.memory_dim, args.instr_dim,
-                          not args.no_instr, args.instr_arch, not args.no_mem, args.arch)
+if args.hrl:
+    if acmodel is None:
+        if args.pretrained_model:
+            acmodel = utils.load_model(args.pretrained_model, raise_not_found=True)
+        else:
+            acmodel1 = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
+                              args.image_dim, args.memory_dim, args.instr_dim,
+                              not args.no_instr, args.instr_arch, not args.no_mem, args.arch, 2)
+            acmodel2 = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
+                               args.image_dim, args.memory_dim, args.instr_dim,
+                               not args.no_instr, args.instr_arch, not args.no_mem, args.arch, 2)
+else:
+    if acmodel is None:
+        if args.pretrained_model:
+            acmodel = utils.load_model(args.pretrained_model, raise_not_found=True)
+        else:
+            acmodel = ACModel(obss_preprocessor.obs_space, envs[0].action_space,
+                              args.image_dim, args.memory_dim, args.instr_dim,
+                              not args.no_instr, args.instr_arch, not args.no_mem, args.arch)
+    acmodel = utils.load_model(args.model, raise_not_found=False)
 
 obss_preprocessor.vocab.save()
 utils.save_model(acmodel, args.model)
@@ -107,7 +120,12 @@ if torch.cuda.is_available():
 
 reshape_reward = lambda _0, _1, reward, _2: args.reward_scale * reward
 if args.algo == "ppo":
-    algo = babyai.rl.PPOAlgo(envs, acmodel, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+    algo = babyai.rl.PPOAlgo(envs, acmodel1, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
+                             args.gae_lambda,
+                             args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
+                             args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size, obss_preprocessor,
+                             reshape_reward)
+    algo = babyai.rl.PPOAlgo(envs, acmodel2, args.frames_per_proc, args.discount, args.lr, args.beta1, args.beta2,
                              args.gae_lambda,
                              args.entropy_coef, args.value_loss_coef, args.max_grad_norm, args.recurrence,
                              args.optim_eps, args.clip_eps, args.ppo_epochs, args.batch_size, obss_preprocessor,
@@ -182,9 +200,9 @@ best_mean_return = 0
 test_env_name = args.env
 while status['num_frames'] < args.frames:
     # Update parameters
-
     update_start_time = time.time()
-    logs = algo.update_parameters()
+    logs = algo1.update_parameters()
+    logs = algo2.update_parameters()
     update_end_time = time.time()
 
     status['num_frames'] += logs["num_frames"]
@@ -192,7 +210,6 @@ while status['num_frames'] < args.frames:
     status['i'] += 1
 
     # Print logs
-
     if status['i'] % args.log_interval == 0:
         total_ellapsed_time = int(time.time() - total_start_time)
         fps = logs["num_frames"] / (update_end_time - update_start_time)
@@ -223,7 +240,6 @@ while status['num_frames'] < args.frames:
         csv_writer.writerow(data)
 
     # Save obss preprocessor vocabulary and model
-
     if args.save_interval > 0 and status['i'] % args.save_interval == 0:
         obss_preprocessor.vocab.save()
         with open(status_path, 'w') as dst:

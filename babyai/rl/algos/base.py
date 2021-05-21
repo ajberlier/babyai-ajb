@@ -130,10 +130,16 @@ class BaseAlgo(ABC):
         """
         for i in range(self.num_frames_per_proc):
             # Do one agent-environment interaction
-
             preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
             with torch.no_grad():
-                model_results = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
+                if option is None:
+                    prev_option = 1
+                if option == 0:
+                    prev_option = 0
+                    model_results = self.acmodel1(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
+                if option == 1:
+                    prev_option = 1
+                    model_results = self.acmodel2(preprocessed_obs, self.memory * self.mask.unsqueeze(1))
                 dist = model_results['dist']
                 value = model_results['value']
                 memory = model_results['memory']
@@ -147,7 +153,6 @@ class BaseAlgo(ABC):
                 # env_info = self.process_aux_info(env_info)
 
             # Update experiences values
-
             self.obss[i] = self.obs
             self.obs = obs
 
@@ -188,7 +193,6 @@ class BaseAlgo(ABC):
             self.log_episode_num_frames *= self.mask
 
         # Add advantage and return to experiences
-
         preprocessed_obs = self.preprocess_obss(self.obs, device=self.device)
         with torch.no_grad():
             next_value = self.acmodel(preprocessed_obs, self.memory * self.mask.unsqueeze(1))['value']
