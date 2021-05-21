@@ -594,83 +594,83 @@ class OCModel(nn.Module, babyai.rl.RecurrentACModel):
             ValueError("Undefined instruction architecture: {}".format(self.use_instr))
 
 
-class OptionGaussianActorCriticNet(nn.Module, BaseNet):
-    def __init__(self,
-                 state_dim,
-                 action_dim,
-                 num_options,
-                 phi_body=None,
-                 actor_body=None,
-                 critic_body=None,
-                 option_body_fn=None):
-        super(OptionGaussianActorCriticNet, self).__init__()
-        if phi_body is None: phi_body = DummyBody(state_dim)
-        if critic_body is None: critic_body = DummyBody(phi_body.feature_dim)
-        if actor_body is None: actor_body = DummyBody(phi_body.feature_dim)
-
-        self.phi_body = phi_body
-        self.actor_body = actor_body
-        self.critic_body = critic_body
-
-        # build option network
-        self.options = nn.ModuleList([SingleOptionNet(action_dim, option_body_fn) for _ in range(num_options)])
-
-        # linear output
-        self.fc_pi_o = layer_init(nn.Linear(actor_body.feature_dim, num_options), 1e-3)
-        self.fc_q_o = layer_init(nn.Linear(critic_body.feature_dim, num_options), 1e-3)
-        self.fc_u_o = layer_init(nn.Linear(critic_body.feature_dim, num_options + 1), 1e-3)
-
-        self.num_options = num_options
-        self.action_dim = action_dim
-        self.to(Config.DEVICE)
-
-    def forward(self, obs):
-
-        # state feature
-        obs = tensor(obs)
-        phi = self.phi_body(obs)
-
-        # option
-        mean = []
-        std = []
-        beta = []
-        for option in self.options:
-            prediction = option(phi)
-            mean.append(prediction['mean'].unsqueeze(1))
-            std.append(prediction['std'].unsqueeze(1))
-            beta.append(prediction['beta'])
-        mean = torch.cat(mean, dim=1)
-        std = torch.cat(std, dim=1)
-        beta = torch.cat(beta, dim=1)
-
-        # policy over option with soft-max
-        phi_a = self.actor_body(phi)
-        phi_a = self.fc_pi_o(phi_a)
-        pi_o = F.softmax(phi_a, dim=-1)
-        log_pi_o = F.log_softmax(phi_a, dim=-1)
-
-        # critic network
-        phi_c = self.critic_body(phi)
-        q_o = self.fc_q_o(phi_c)
-        u_o = self.fc_u_o(phi_c)
-
-        return {'mean': mean,
-                'std': std,
-                'q_o': q_o,
-                'u_o': u_o,
-                'inter_pi': pi_o,
-                'log_inter_pi': log_pi_o,
-                'beta': beta}
-
-    class BaseNet:
-        def __init__(self):
-            pass
-
-
-class DummyBody(nn.Module):
-    def __init__(self, state_dim):
-        super(DummyBody, self).__init__()
-        self.feature_dim = state_dim
-
-    def forward(self, x):
-        return x
+# class OptionGaussianActorCriticNet(nn.Module, BaseNet):
+#     def __init__(self,
+#                  state_dim,
+#                  action_dim,
+#                  num_options,
+#                  phi_body=None,
+#                  actor_body=None,
+#                  critic_body=None,
+#                  option_body_fn=None):
+#         super(OptionGaussianActorCriticNet, self).__init__()
+#         if phi_body is None: phi_body = DummyBody(state_dim)
+#         if critic_body is None: critic_body = DummyBody(phi_body.feature_dim)
+#         if actor_body is None: actor_body = DummyBody(phi_body.feature_dim)
+#
+#         self.phi_body = phi_body
+#         self.actor_body = actor_body
+#         self.critic_body = critic_body
+#
+#         # build option network
+#         self.options = nn.ModuleList([SingleOptionNet(action_dim, option_body_fn) for _ in range(num_options)])
+#
+#         # linear output
+#         self.fc_pi_o = layer_init(nn.Linear(actor_body.feature_dim, num_options), 1e-3)
+#         self.fc_q_o = layer_init(nn.Linear(critic_body.feature_dim, num_options), 1e-3)
+#         self.fc_u_o = layer_init(nn.Linear(critic_body.feature_dim, num_options + 1), 1e-3)
+#
+#         self.num_options = num_options
+#         self.action_dim = action_dim
+#         self.to(Config.DEVICE)
+#
+#     def forward(self, obs):
+#
+#         # state feature
+#         obs = tensor(obs)
+#         phi = self.phi_body(obs)
+#
+#         # option
+#         mean = []
+#         std = []
+#         beta = []
+#         for option in self.options:
+#             prediction = option(phi)
+#             mean.append(prediction['mean'].unsqueeze(1))
+#             std.append(prediction['std'].unsqueeze(1))
+#             beta.append(prediction['beta'])
+#         mean = torch.cat(mean, dim=1)
+#         std = torch.cat(std, dim=1)
+#         beta = torch.cat(beta, dim=1)
+#
+#         # policy over option with soft-max
+#         phi_a = self.actor_body(phi)
+#         phi_a = self.fc_pi_o(phi_a)
+#         pi_o = F.softmax(phi_a, dim=-1)
+#         log_pi_o = F.log_softmax(phi_a, dim=-1)
+#
+#         # critic network
+#         phi_c = self.critic_body(phi)
+#         q_o = self.fc_q_o(phi_c)
+#         u_o = self.fc_u_o(phi_c)
+#
+#         return {'mean': mean,
+#                 'std': std,
+#                 'q_o': q_o,
+#                 'u_o': u_o,
+#                 'inter_pi': pi_o,
+#                 'log_inter_pi': log_pi_o,
+#                 'beta': beta}
+#
+#     class BaseNet:
+#         def __init__(self):
+#             pass
+#
+#
+# class DummyBody(nn.Module):
+#     def __init__(self, state_dim):
+#         super(DummyBody, self).__init__()
+#         self.feature_dim = state_dim
+#
+#     def forward(self, x):
+#         return x
